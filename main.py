@@ -2,6 +2,7 @@ import json
 import os
 import wx
 import uuid
+import random
 
 
 class ContactBook():
@@ -61,7 +62,8 @@ class ContactBookApp(wx.Frame):
         self.Show()
 
     def createWidgets(self):
-        self.entriesBox = wx.ListBox(self.mainPanel, choices=[])
+        self.entriesBox = wx.ListBox(
+            self.mainPanel, choices=[], style=wx.LB_EXTENDED)
         self.entriesBox.SetLabelText("Entries")
 
         self.nameText = wx.StaticText(self.mainPanel, label="")
@@ -80,7 +82,6 @@ class ContactBookApp(wx.Frame):
         addressSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         mainSizer = wx.BoxSizer(wx.HORIZONTAL)
-
 
         addButton = wx.Button(self.mainPanel, label="Add Entry")
         modifyButton = wx.Button(self.mainPanel, label="Modify Entry")
@@ -141,12 +142,27 @@ class ContactBookApp(wx.Frame):
         pass
 
     def onAddEntry(self, event):
+        with AddEntryDialog(self) as entryDialog:
+            entryDialog.ShowModal()
+            pass
         pass
 
     def onModifyEntry(self, event):
         pass
 
     def onRemoveEntry(self, event):
+        statusbar = self.GetStatusBar()
+        try:
+            selectedContacts = self.entriesBox.GetSelections()
+            statusbar.PushStatusText("Deleting Contacts...")
+            for contact in selectedContacts:
+                self.contactBook.removeEntry(
+                    self.entriesBox.GetClientData(contact))
+            self.populateEntries()
+        except:
+            wx.MessageBox("Select a contact to remove.", style=wx.ICON_ERROR)
+            pass
+        statusbar.PopStatusText()
         pass
 
     def onAbout(self, event):
@@ -156,6 +172,18 @@ class ContactBookApp(wx.Frame):
 
     def onExit(self, event):
         self.Close()
+
+
+class EntryDialog(wx.Dialog):
+
+    def __init__(self, parent, title):
+        wx.Dialog.__init__(self, parent, title=title, size=(300, 500))
+
+
+class AddEntryDialog(EntryDialog):
+
+    def __init__(self, parent):
+        super().__init__(parent, "Add Entry")
 
 
 if __name__ == "__main__":
