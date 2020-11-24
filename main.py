@@ -195,7 +195,8 @@ class ContactBookApp(wx.Frame):
                 email = entryDialog.emailInput.GetValue()
                 phone = entryDialog.phoneInput.GetValue()
                 address = entryDialog.addressInput.GetValue()
-                self.contactBook.modifyEntry(entryUUID,{"name": name, "email": email, "phone": phone, "address": address})
+                self.contactBook.modifyEntry(
+                    entryUUID, {"name": name, "email": email, "phone": phone, "address": address})
                 self.populateEntries()
         except Exception as e:
             wx.MessageBox(e.args[0],
@@ -204,7 +205,8 @@ class ContactBookApp(wx.Frame):
         pass
 
     def onRemoveEntry(self, event):
-        dialog = wx.MessageDialog(self, "Are you sure you wish to remove these contacts?", style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING)
+        dialog = wx.MessageDialog(self, "Are you sure you wish to remove these contacts?",
+                                  style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING)
         if dialog.ShowModal() == wx.ID_YES:
             statusbar = self.GetStatusBar()
             try:
@@ -215,7 +217,8 @@ class ContactBookApp(wx.Frame):
                         self.entriesBox.GetClientData(contact))
                 self.populateEntries()
             except:
-                wx.MessageBox("Select a contact to remove.", style=wx.ICON_ERROR)
+                wx.MessageBox("Select a contact to remove.",
+                              style=wx.ICON_ERROR)
                 pass
             statusbar.PopStatusText()
         pass
