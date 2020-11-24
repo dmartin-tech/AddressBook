@@ -165,12 +165,7 @@ class ContactBookApp(wx.Frame):
         entryDialog = AddEntryDialog(self)
         entryDialog.ShowModal()
         if entryDialog.isConfirmed():
-            name = entryDialog.nameInput.GetValue()
-            email = entryDialog.emailInput.GetValue()
-            phone = entryDialog.phoneInput.GetValue()
-            address = entryDialog.addressInput.GetValue()
-            self.contactBook.addEntry(
-                {"name": name, "email": email, "phone": phone, "address": address})
+            self.contactBook.addEntry(entryDialog.getDetails())
             self.populateEntries()
         pass
 
@@ -185,18 +180,11 @@ class ContactBookApp(wx.Frame):
             entryUUID = self.entriesBox.GetClientData(selectedContact[0])
             print(entryUUID)
             entry = self.contactBook.getEntry(entryUUID)
-            name = entryDialog.nameInput.SetValue(entry["name"])
-            email = entryDialog.emailInput.SetValue(entry["email"])
-            phone = entryDialog.phoneInput.SetValue(entry["phone"])
-            address = entryDialog.addressInput.SetValue(entry["address"])
+            entryDialog.setDetails(entry)
             entryDialog.ShowModal()
             if entryDialog.isConfirmed():
-                name = entryDialog.nameInput.GetValue()
-                email = entryDialog.emailInput.GetValue()
-                phone = entryDialog.phoneInput.GetValue()
-                address = entryDialog.addressInput.GetValue()
                 self.contactBook.modifyEntry(
-                    entryUUID, {"name": name, "email": email, "phone": phone, "address": address})
+                    entryUUID, entryDialog.getDetails())
                 self.populateEntries()
         except Exception as e:
             wx.MessageBox(e.args[0],
@@ -273,6 +261,18 @@ class EntryDialog(wx.Dialog):
 
         self.flexSizer.AddSpacer(1)
         self.flexSizer.Add(self.confirmButton, flag=flags, border=4)
+
+    def getDetails(self):
+        return {"name": self.nameInput.GetValue(),
+                "email": self.emailInput.GetValue(),
+                "phone": self.phoneInput.GetValue(),
+                "address": self.addressInput.GetValue()}
+
+    def setDetails(self, details):
+        self.nameInput.SetValue(details["name"])
+        self.emailInput.SetValue(details["email"])
+        self.phoneInput.SetValue(details["phone"])
+        self.addressInput.SetValue(details["address"])
 
     def onConfirm(self, evt):
         self.confirm = True
