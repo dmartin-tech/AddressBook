@@ -25,6 +25,12 @@ class ContactBook():
         with open(self.getBookFile(), "+w") as conBook:
             json.dump(entrylist, conBook, sort_keys=True, indent=2)
 
+    def modifyEntry(self, entryUUID, details):
+        entrylist = self.getEntries()
+        entrylist["entries"][f"{entryUUID}"] = details
+        with open(self.getBookFile(), "+w") as conBook:
+            json.dump(entrylist, conBook, sort_keys=True, indent=2)
+
     def getEntry(self, entryUUID):
         return self.getEntries()["entries"][f"{entryUUID}"]
 
@@ -75,7 +81,7 @@ class ContactBookApp(wx.Frame):
         buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         rightSizer = wx.BoxSizer(wx.HORIZONTAL)
-        infoSizer = wx.BoxSizer(wx.VERTICAL)
+        infoSizer = wx.GridBagSizer(vgap=5, hgap=5)
         nameSizer = wx.BoxSizer(wx.HORIZONTAL)
         emailSizer = wx.BoxSizer(wx.HORIZONTAL)
         phoneSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -93,10 +99,14 @@ class ContactBookApp(wx.Frame):
 
         leftSizer.Add(self.entriesBox, 10, wx.ALL | wx.EXPAND)
         leftSizer.Add(buttonSizer, 1, wx.ALL | wx.EXPAND)
-        infoSizer.Add(nameSizer)
-        infoSizer.Add(emailSizer)
-        infoSizer.Add(phoneSizer)
-        infoSizer.Add(addressSizer)
+        infoSizer.Add(sizer=nameSizer, pos=wx.GBPosition(
+            0, 0), flag=wx.ALIGN_RIGHT)
+        infoSizer.Add(sizer=emailSizer, pos=wx.GBPosition(
+            1, 0), flag=wx.ALIGN_RIGHT)
+        infoSizer.Add(sizer=phoneSizer, pos=wx.GBPosition(
+            2, 0), flag=wx.ALIGN_RIGHT)
+        infoSizer.Add(sizer=addressSizer, pos=wx.GBPosition(
+            3, 0), flag=wx.ALIGN_RIGHT)
 
         rightSizer.Add(infoSizer, 1, wx.ALL | wx.EXPAND, 4)
 
@@ -123,9 +133,16 @@ class ContactBookApp(wx.Frame):
 
     def populateEntries(self):
         self.entriesBox.Clear()
+        self.clearInfo()
         for v in self.contactBook.getEntries()["entries"]:
             self.entriesBox.Append(self.contactBook.getEntries()[
                                    "entries"][v]["name"], clientData=v)
+
+    def clearInfo(self):
+        self.nameText.SetLabelText("")
+        self.emailText.SetLabelText("")
+        self.phoneText.SetLabelText("")
+        self.addressText.SetLabelText("")
 
     def updateInfo(self, entryUUID):
         entry = self.contactBook.getEntry(entryUUID)
@@ -136,33 +153,71 @@ class ContactBookApp(wx.Frame):
         pass
 
     def onSelectEntry(self, event):
-        self.selectedContact = self.entriesBox.GetClientData(
-            event.GetSelection())
-        self.updateInfo(self.selectedContact)
+        try:
+            self.selectedContact = self.entriesBox.GetClientData(
+                event.GetSelection())
+            self.updateInfo(self.selectedContact)
+        except:
+            self.clearInfo()
         pass
 
     def onAddEntry(self, event):
-        with AddEntryDialog(self) as entryDialog:
-            entryDialog.ShowModal()
-            pass
+        entryDialog = AddEntryDialog(self)
+        entryDialog.ShowModal()
+        if entryDialog.isConfirmed():
+            name = entryDialog.nameInput.GetValue()
+            email = entryDialog.emailInput.GetValue()
+            phone = entryDialog.phoneInput.GetValue()
+            address = entryDialog.addressInput.GetValue()
+            self.contactBook.addEntry(
+                {"name": name, "email": email, "phone": phone, "address": address})
+            self.populateEntries()
         pass
 
     def onModifyEntry(self, event):
+        try:
+            selectedContact = self.entriesBox.GetSelections()
+            if len(selectedContact) > 1:
+                raise Exception("Select at most one contact to modify.")
+            elif len(selectedContact) == 0:
+                raise Exception("Select a single contact to modify.")
+            entryDialog = ModifyEntryDialog(self)
+            entryUUID = self.entriesBox.GetClientData(selectedContact[0])
+            print(entryUUID)
+            entry = self.contactBook.getEntry(entryUUID)
+            name = entryDialog.nameInput.SetValue(entry["name"])
+            email = entryDialog.emailInput.SetValue(entry["email"])
+            phone = entryDialog.phoneInput.SetValue(entry["phone"])
+            address = entryDialog.addressInput.SetValue(entry["address"])
+            entryDialog.ShowModal()
+            if entryDialog.isConfirmed():
+                name = entryDialog.nameInput.GetValue()
+                email = entryDialog.emailInput.GetValue()
+                phone = entryDialog.phoneInput.GetValue()
+                address = entryDialog.addressInput.GetValue()
+                self.contactBook.modifyEntry(entryUUID,{"name": name, "email": email, "phone": phone, "address": address})
+                self.populateEntries()
+        except Exception as e:
+            wx.MessageBox(e.args[0],
+                          style=wx.ICON_ERROR)
+            pass
         pass
 
     def onRemoveEntry(self, event):
-        statusbar = self.GetStatusBar()
-        try:
-            selectedContacts = self.entriesBox.GetSelections()
-            statusbar.PushStatusText("Deleting Contacts...")
-            for contact in selectedContacts:
-                self.contactBook.removeEntry(
-                    self.entriesBox.GetClientData(contact))
-            self.populateEntries()
-        except:
-            wx.MessageBox("Select a contact to remove.", style=wx.ICON_ERROR)
-            pass
-        statusbar.PopStatusText()
+        dialog = wx.MessageDialog(self, "Are you sure you wish to remove these contacts?", style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING)
+        if dialog.ShowModal() == wx.ID_YES:
+            statusbar = self.GetStatusBar()
+            try:
+                selectedContacts = self.entriesBox.GetSelections()
+                statusbar.PushStatusText("Deleting Contacts...")
+                for contact in selectedContacts:
+                    self.contactBook.removeEntry(
+                        self.entriesBox.GetClientData(contact))
+                self.populateEntries()
+            except:
+                wx.MessageBox("Select a contact to remove.", style=wx.ICON_ERROR)
+                pass
+            statusbar.PopStatusText()
         pass
 
     def onAbout(self, event):
@@ -177,13 +232,65 @@ class ContactBookApp(wx.Frame):
 class EntryDialog(wx.Dialog):
 
     def __init__(self, parent, title):
-        wx.Dialog.__init__(self, parent, title=title, size=(300, 500))
+        wx.Dialog.__init__(self, parent, title=title, size=(200, 250))
+        self.CenterOnParent()
+
+        self.confirm = False
+        self.mainPanel = wx.Panel(self)
+        self.flexSizer = wx.FlexGridSizer(cols=2, vgap=5, hgap=5)
+        self.mainPanel.SetSizer(self.flexSizer)
+
+        self.nameLabel = wx.StaticText(self.mainPanel, label="Name: ")
+        self.nameInput = wx.TextCtrl(self.mainPanel)
+
+        self.emailLabel = wx.StaticText(self.mainPanel, label="Email: ")
+        self.emailInput = wx.TextCtrl(self.mainPanel)
+
+        self.phoneLabel = wx.StaticText(self.mainPanel, label="Phone: ")
+        self.phoneInput = wx.TextCtrl(self.mainPanel)
+
+        self.addressLabel = wx.StaticText(self.mainPanel, label="Address: ")
+        self.addressInput = wx.TextCtrl(self.mainPanel)
+
+        self.confirmButton = wx.Button(self.mainPanel, label="Confirm")
+        self.Bind(wx.EVT_BUTTON, self.onConfirm, self.confirmButton)
+
+        flags = wx.ALIGN_RIGHT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
+        self.flexSizer.Add(self.nameLabel, flag=flags, border=4)
+        self.flexSizer.Add(self.nameInput, flag=flags, border=4)
+
+        self.flexSizer.Add(self.emailLabel, flag=flags, border=4)
+        self.flexSizer.Add(self.emailInput, flag=flags, border=4)
+
+        self.flexSizer.Add(self.phoneLabel, flag=flags, border=4)
+        self.flexSizer.Add(self.phoneInput, flag=flags, border=4)
+
+        self.flexSizer.Add(self.addressLabel, flag=flags, border=4)
+        self.flexSizer.Add(self.addressInput, flag=flags, border=4)
+
+        self.flexSizer.AddSpacer(1)
+        self.flexSizer.Add(self.confirmButton, flag=flags, border=4)
+
+    def onConfirm(self, evt):
+        self.confirm = True
+        self.Close()
+
+    def isConfirmed(self):
+        return self.confirm
 
 
 class AddEntryDialog(EntryDialog):
 
     def __init__(self, parent):
         super().__init__(parent, "Add Entry")
+        self.confirmButton.SetLabel("Add Contact")
+
+
+class ModifyEntryDialog(EntryDialog):
+
+    def __init__(self, parent):
+        super().__init__(parent, "Modify Entry")
+        self.confirmButton.SetLabel("Modify Contact")
 
 
 if __name__ == "__main__":
