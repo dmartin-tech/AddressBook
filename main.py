@@ -178,7 +178,6 @@ class ContactBookApp(wx.Frame):
                 raise Exception("Select a single contact to modify.")
             entryDialog = ModifyEntryDialog(self)
             entryUUID = self.entriesBox.GetClientData(selectedContact[0])
-            print(entryUUID)
             entry = self.contactBook.getEntry(entryUUID)
             entryDialog.setDetails(entry)
             entryDialog.ShowModal()
